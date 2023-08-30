@@ -62,10 +62,11 @@ func main() {
 	nativeDB := stdlib.OpenDBFromPool(connPool, stdlib.OptionPreferSimpleProtocol(true))
 
 	db := sqlx.NewDb(nativeDB, "pgx")
+	defer db.Close()
+
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
-	defer db.Close()
 
 	err = db.Ping()
 	if err != nil {

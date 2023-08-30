@@ -21,6 +21,37 @@ services:
     ports:
       - 6379:6379
 
+  haproxy:
+    image: haproxy:latest
+    restart: on-failure
+    depends_on:
+      - pgbouncer-1
+      - pgbouncer-2
+    volumes:
+        - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+        - 80:80
+
+  pgbouncer-1:
+    image: edoburu/pgbouncer:latest
+    restart: on-failure
+    depends_on:
+      - postgres
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    ports:
+      - 6432:6432
+
+  pgbouncer-2:
+    image: edoburu/pgbouncer:latest
+    restart: on-failure
+    depends_on:
+      - postgres
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    ports:
+      - 6433:6432
+
 volumes:
   postgres-data:
   redis-data:
