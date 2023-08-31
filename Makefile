@@ -1,6 +1,8 @@
-.PHONY: local
-local:
-	go run ./cmd/main.go
+VERSION?=dev
+
+.PHONY:dev
+start:
+	./scripts/env.sh ${VERSION} "go run ./cmd/*.go"
 
 .PHONY: compose-up
 compose-up:

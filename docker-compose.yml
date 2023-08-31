@@ -32,13 +32,23 @@ services:
     ports:
         - 80:80
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    restart: on-failure
+    depends_on:
+      - haproxy
+
   pgbouncer-1:
     image: edoburu/pgbouncer:latest
     restart: on-failure
     depends_on:
       - postgres
     volumes:
-      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer.server.ini:/etc/pgbouncer/pgbouncer.ini:ro
     ports:
       - 6432:6432
 
@@ -48,10 +58,10 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer.server.ini:/etc/pgbouncer/pgbouncer.ini:ro
     ports:
       - 6433:6432
 
 volumes:
   postgres-data:
-  redis-data:
+  # redis-data:

@@ -2,17 +2,14 @@ package handler
 
 import (
 	"item-service/internal/app"
-	"time"
 )
 
 type HttpHandler struct {
-	app     app.Application
-	timeOut time.Duration
+	app app.Application
 }
 
 func New(app app.Application) HttpHandler {
 	return HttpHandler{
-		app:     app,
-		timeOut: 15 * time.Second,
+		app: app,
 	}
 }

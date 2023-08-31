@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/caarlos0/env/v8"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx"
@@ -19,7 +20,32 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Postgres struct {
+	User     string `env:"PG_USER,required"`
+	Password string `env:"PG_PASSWORD,required"`
+	Host     string `env:"PG_HOST,required"`
+	Port     int    `env:"PG_PORT,required"`
+	Db       string `env:"PG_DB,required"`
+}
+
+type Redis struct {
+	User     string `env:"REDIS_USER,required"`
+	Password string `env:"REDIS_PASSWORD,required"`
+	Host     string `env:"REDIS_HOST,required"`
+	Port     string `env:"REDIS_PORT,required"`
+}
+
+type Options struct {
+	Debug    bool   `env:"DEBUG" envDefault:"false"`
+	HttPort  string `env:"HTTP_PORT" envDefault:"8080"`
+	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
+
+	Postgres Postgres
+	Redis    Redis
+}
+
 func main() {
+
 	// Syscall
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -30,10 +56,16 @@ func main() {
 		cancel()
 	}()
 
+	// config
+	var cfg Options
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
+
 	// logger
 	logrus.SetOutput(os.Stdout)
 	logrus.SetFormatter(&logrus.JSONFormatter{})
-	lvl, err := logrus.ParseLevel("info")
+	lvl, err := logrus.ParseLevel(cfg.LogLevel)
 	if err != nil {
 		panic(err)
 	}
@@ -42,14 +74,15 @@ func main() {
 	// postgresql
 	connPoolCfg := pgx.ConnPoolConfig{
 		ConnConfig: pgx.ConnConfig{
-			Host:     "localhost",
-			Database: "test",
-			Port:     5432,
-			User:     "test",
-			Password: "test",
+			PreferSimpleProtocol: true,
+			Host:                 cfg.Postgres.Host,
+			Port:                 uint16(cfg.Postgres.Port),
+			Database:             cfg.Postgres.Db,
+			User:                 cfg.Redis.User,
+			Password:             cfg.Redis.Password,
 		},
 		AfterConnect:   nil,
-		MaxConnections: 20,
+		MaxConnections: 40,
 		AcquireTimeout: 30 * time.Second,
 	}
 
@@ -64,8 +97,8 @@ func main() {
 	db := sqlx.NewDb(nativeDB, "pgx")
 	defer db.Close()
 
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(20)
+	db.SetMaxOpenConns(40)
+	db.SetMaxIdleConns(40)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	err = db.Ping()
@@ -77,9 +110,11 @@ func main() {
 	redisOpt := &redis.Options{
 		WriteTimeout:    time.Duration(15) * time.Second,
 		ReadTimeout:     time.Duration(15) * time.Second,
-		Addr:            "localhost:6379",
-		MaxIdleConns:    25,
+		Addr:            fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port),
+		MaxIdleConns:    40,
 		ConnMaxIdleTime: 5 * time.Minute,
+		Password:        cfg.Redis.Password,
+		Username:        cfg.Redis.User,
 	}
 
 	redisClient := redis.NewClient(redisOpt)
@@ -100,7 +135,7 @@ func main() {
 	mux.Get("/items/{id}", httpHandler.GetItemByID)
 
 	httpServer := &http.Server{
-		Addr:         ":8080",
+		Addr:         fmt.Sprintf(":%s", cfg.HttPort),
 		Handler:      mux,
 		WriteTimeout: time.Duration(15) * time.Second,
 		ReadTimeout:  time.Duration(15) * time.Second,

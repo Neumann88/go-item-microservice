@@ -9,13 +9,14 @@ import (
 	"item-service/pkg/http/response"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
 
 func (h HttpHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), h.timeOut)
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
 	b, err := io.ReadAll(r.Body)
@@ -43,7 +44,7 @@ func (h HttpHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h HttpHandler) GetItemByID(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), h.timeOut)
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
 	inItemID := chi.URLParam(r, "id")
